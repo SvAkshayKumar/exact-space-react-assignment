@@ -4,6 +4,8 @@ dist-ssr
 *.local
 .DS_Store
 *.log
+# Ignore real env files but always allow the example template
 .env
 .env.*
+!.env.example
 
