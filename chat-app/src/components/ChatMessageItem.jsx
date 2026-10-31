@@ -43,14 +43,17 @@ export default function ChatMessageItem({
   onLike,
   onToggleReaction,
   currentUserId,
-  currentUsername
+  currentUsername,
+  mySentMessageIds
 }) {
   const { id, userId, user, text, timestamp, likes = 0, likedBy = [], reactions = {} } = message;
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
-  // Uniquely identify if this message belongs to the current user by unique userId
-  const isMyMessage = userId === currentUserId;
-  // If another user happens to have the exact same username
+  // Uniquely identify if this message was sent by the current user:
+  // Either by matching current persistent userId OR by local sent message registry
+  const isMyMessage = (userId && userId === currentUserId) || (mySentMessageIds && mySentMessageIds.has(id));
+
+  // If another user in chat happens to share the same username as current user
   const isSameNameOtherUser = !isMyMessage && user === currentUsername;
 
   const avatarColor = getUserColor(user, userId);

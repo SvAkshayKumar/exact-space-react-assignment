@@ -26,7 +26,10 @@ export default function App() {
   const [typingUser, setTypingUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Persistent user profile with unique userId and assigned username
+  // Set of message IDs sent by this client device during this session
+  const [mySentMessageIds, setMySentMessageIds] = useState(() => new Set());
+
+  // Persistent user profile with constant userId and assigned username
   const [currentUser, setCurrentUser] = useState(() => getPersistentProfile());
 
   // Current active channel object
@@ -119,7 +122,8 @@ export default function App() {
   }, [currentUser, activeChannelId]);
 
   /**
-   * Reset user profile cache and assign a new constant identity
+   * Reset user name while PRESERVING constant client identity.
+   * This guarantees messages previously sent by this client always remain "(You)".
    */
   const handleResetUser = () => {
     const newProfile = resetPersistentProfile(currentUser.username);
@@ -138,14 +142,17 @@ export default function App() {
     const newMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       channelId: activeChannelId,
-      userId: currentUser.userId,      // Unique sender ID
-      user: currentUser.username,      // Display name
+      userId: currentUser.userId,      // Constant unique sender ID
+      user: currentUser.username,      // Display name at time of sending
       text,
       timestamp,
       likes: 0,
       likedBy: [],
       reactions: {}
     };
+
+    // Record that this message was sent by this client device
+    setMySentMessageIds((prev) => new Set(prev).add(newMessage.id));
 
     if (isConnected) {
       socketService.publishMessage(newMessage);
@@ -299,6 +306,7 @@ export default function App() {
           currentUserId={currentUser.userId}
           currentUsername={currentUser.username}
           channelName={currentChannel.name}
+          mySentMessageIds={mySentMessageIds}
         />
 
         {/* Chat input box at bottom */}

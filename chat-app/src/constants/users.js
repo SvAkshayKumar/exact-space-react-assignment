@@ -27,7 +27,6 @@ export function getInitials(name = '') {
 
 /**
  * Returns avatar background color for a user.
- * Can use userId to generate distinct subtle hues if duplicate usernames exist.
  */
 export function getUserColor(name = '', userId = '') {
   if (USER_COLORS[name] && !userId) {
@@ -48,7 +47,7 @@ export function getUserColor(name = '', userId = '') {
 
 /**
  * Get or assign a constant user profile (unique userId + assigned username) for this client.
- * The userId and username stay constant across refreshes and sessions until cache is cleared.
+ * The userId stays constant to uniquely identify this client.
  */
 export function getPersistentProfile() {
   try {
@@ -74,18 +73,24 @@ export function getPersistentProfile() {
 }
 
 /**
- * Reset persistent profile and assign a new constant profile
+ * Reset username for the user while PRESERVING their constant client userId.
+ * This ensures all messages previously sent by this client always remain recognized as "(You)".
  */
 export function resetPersistentProfile(excludeUsername) {
   try {
-    const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // Keep the constant client userId so ownership of past sent messages is never lost
+    let userId = localStorage.getItem(USER_ID_CACHE_KEY);
+    if (!userId) {
+      userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      localStorage.setItem(USER_ID_CACHE_KEY, userId);
+    }
+
     const remaining = user_list.filter((u) => u !== excludeUsername);
     const newUsername = remaining[Math.floor(Math.random() * remaining.length)] || user_list[0];
 
-    localStorage.setItem(USER_ID_CACHE_KEY, newUserId);
     localStorage.setItem(USER_NAME_CACHE_KEY, newUsername);
 
-    return { userId: newUserId, username: newUsername };
+    return { userId, username: newUsername };
   } catch {
     return {
       userId: `usr_${Date.now()}`,

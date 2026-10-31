@@ -8,7 +8,8 @@ export default function ChatMessageList({
   typingUser,
   currentUserId,
   currentUsername,
-  channelName
+  channelName,
+  mySentMessageIds
 }) {
   const messagesEndRef = useRef(null);
 
@@ -39,6 +40,7 @@ export default function ChatMessageList({
               onToggleReaction={onToggleReaction}
               currentUserId={currentUserId}
               currentUsername={currentUsername}
+              mySentMessageIds={mySentMessageIds}
             />
           ))
         )}
