@@ -10,7 +10,8 @@ export const USER_COLORS = {
   "Elin": "#E94E77"          // Coral / Rose
 };
 
-const USER_CACHE_KEY = 'exactspace_chat_username';
+const USER_ID_CACHE_KEY = 'exactspace_chat_user_id';
+const USER_NAME_CACHE_KEY = 'exactspace_chat_username';
 
 /**
  * Returns initials from a username (e.g. "Alan" -> "A")
@@ -25,37 +26,70 @@ export function getInitials(name = '') {
 }
 
 /**
- * Returns avatar background color for a user
+ * Returns avatar background color for a user.
+ * Can use userId to generate distinct subtle hues if duplicate usernames exist.
  */
-export function getUserColor(name = '') {
-  if (USER_COLORS[name]) {
+export function getUserColor(name = '', userId = '') {
+  if (USER_COLORS[name] && !userId) {
     return USER_COLORS[name];
   }
   const colors = [
     '#4A90E2', '#50B83C', '#F5A623', '#9013FE',
-    '#E94E77', '#00A896', '#7209B7', '#F72585'
+    '#E94E77', '#00A896', '#7209B7', '#F72585',
+    '#2A9D8F', '#E76F51', '#264653', '#E63946'
   ];
+  const seed = userId ? `${name}_${userId}` : name;
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
   return colors[Math.abs(hash) % colors.length];
 }
 
 /**
- * Get or assign a constant user name for the client.
- * The name stays constant across refreshes and sessions until the cache is cleared.
+ * Get or assign a constant user profile (unique userId + assigned username) for this client.
+ * The userId and username stay constant across refreshes and sessions until cache is cleared.
  */
-export function getPersistentUser() {
+export function getPersistentProfile() {
   try {
-    const cached = localStorage.getItem(USER_CACHE_KEY);
-    if (cached && user_list.includes(cached)) {
-      return cached;
+    let userId = localStorage.getItem(USER_ID_CACHE_KEY);
+    if (!userId) {
+      userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      localStorage.setItem(USER_ID_CACHE_KEY, userId);
     }
-    const chosen = user_list[Math.floor(Math.random() * user_list.length)];
-    localStorage.setItem(USER_CACHE_KEY, chosen);
-    return chosen;
+
+    let username = localStorage.getItem(USER_NAME_CACHE_KEY);
+    if (!username || !user_list.includes(username)) {
+      username = user_list[Math.floor(Math.random() * user_list.length)];
+      localStorage.setItem(USER_NAME_CACHE_KEY, username);
+    }
+
+    return { userId, username };
   } catch {
-    return user_list[0];
+    return {
+      userId: `usr_${Date.now()}_fallback`,
+      username: user_list[0]
+    };
+  }
+}
+
+/**
+ * Reset persistent profile and assign a new constant profile
+ */
+export function resetPersistentProfile(excludeUsername) {
+  try {
+    const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const remaining = user_list.filter((u) => u !== excludeUsername);
+    const newUsername = remaining[Math.floor(Math.random() * remaining.length)] || user_list[0];
+
+    localStorage.setItem(USER_ID_CACHE_KEY, newUserId);
+    localStorage.setItem(USER_NAME_CACHE_KEY, newUsername);
+
+    return { userId: newUserId, username: newUsername };
+  } catch {
+    return {
+      userId: `usr_${Date.now()}`,
+      username: user_list[0]
+    };
   }
 }

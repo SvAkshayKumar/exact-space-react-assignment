@@ -6,18 +6,18 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.isConnected = false;
-    this.currentUsername = null;
+    this.currentProfile = null;
     this.connectionListeners = new Set();
   }
 
-  connect(username) {
-    if (username) {
-      this.currentUsername = username;
+  connect(profile) {
+    if (profile) {
+      this.currentProfile = profile;
     }
 
     if (this.socket) {
-      if (this.socket.connected && username) {
-        this.socket.emit('user:join', { username });
+      if (this.socket.connected && profile) {
+        this.socket.emit('user:join', profile);
       }
       return;
     }
@@ -31,8 +31,8 @@ class SocketService {
 
     this.socket.on('connect', () => {
       this.isConnected = true;
-      if (this.currentUsername) {
-        this.socket.emit('user:join', { username: this.currentUsername });
+      if (this.currentProfile) {
+        this.socket.emit('user:join', this.currentProfile);
       }
       this._notifyConnectionChange(true);
     });
@@ -48,10 +48,10 @@ class SocketService {
     });
   }
 
-  join(username) {
-    this.currentUsername = username;
-    if (this.socket && this.isConnected) {
-      this.socket.emit('user:join', { username });
+  join(profile) {
+    this.currentProfile = profile;
+    if (this.socket && this.isConnected && profile) {
+      this.socket.emit('user:join', profile);
     }
   }
 
@@ -79,21 +79,21 @@ class SocketService {
     }
   }
 
-  publishLike(messageId, username, channelId) {
+  publishLike(messageId, userId, username, channelId) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('message:like', { messageId, username, channelId });
+      this.socket.emit('message:like', { messageId, userId, username, channelId });
     }
   }
 
-  publishReaction(messageId, username, emoji, channelId) {
+  publishReaction(messageId, userId, username, emoji, channelId) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('message:reaction', { messageId, username, emoji, channelId });
+      this.socket.emit('message:reaction', { messageId, userId, username, emoji, channelId });
     }
   }
 
-  publishTyping(user, isTyping, channelId) {
+  publishTyping(userId, user, isTyping, channelId) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('user:typing', { user, isTyping, channelId });
+      this.socket.emit('user:typing', { userId, user, isTyping, channelId });
     }
   }
 

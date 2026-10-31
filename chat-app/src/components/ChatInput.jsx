@@ -23,6 +23,11 @@ export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] })
     }
   }, []);
 
+  // Extract clean candidate usernames for mentions
+  const activeUserNames = Array.from(
+    new Set(activeUsers.map((u) => (typeof u === 'string' ? u : u?.username)).filter(Boolean))
+  );
+
   // Handle typing detection for mentions (@)
   const handleInputChange = (e) => {
     const value = e.target.value;
@@ -69,7 +74,7 @@ export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] })
   const handleKeyDown = (e) => {
     // If mention dropdown is open
     if (mentionState.isOpen) {
-      const candidates = ['all', ...activeUsers];
+      const candidates = ['all', ...activeUserNames];
       const filtered = candidates.filter((u) =>
         u.toLowerCase().startsWith(mentionState.query.toLowerCase())
       );

@@ -20,20 +20,19 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5001;
 
-// Messages store for the current active server runtime
+// Messages store for current runtime session
 let messages = [];
 
-// Track active connected sockets and their usernames
-// socket.id -> username
+// Track active connected sockets: socket.id -> { userId, username }
 const activeSockets = new Map();
 
 function broadcastOnlineUsers() {
-  const activeUsernames = Array.from(new Set(activeSockets.values())).filter(Boolean);
+  const users = Array.from(activeSockets.values()).filter((u) => u && u.userId);
   const totalCount = activeSockets.size;
 
   io.emit('users:online', {
     count: totalCount,
-    users: activeUsernames
+    users // Array of { userId, username }
   });
 }
 
@@ -42,7 +41,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     onlineCount: activeSockets.size,
-    onlineUsers: Array.from(new Set(activeSockets.values())).filter(Boolean),
+    onlineUsers: Array.from(activeSockets.values()),
     timestamp: new Date().toISOString()
   });
 });
@@ -51,10 +50,10 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`[Socket.io] Client connected: ${socket.id}`);
 
-  // When user announces their persistent name
-  socket.on('user:join', ({ username }) => {
-    activeSockets.set(socket.id, username);
-    console.log(`[Socket.io] User joined: ${username} (Socket: ${socket.id})`);
+  // When user joins with their unique userId and assigned username
+  socket.on('user:join', ({ userId, username }) => {
+    activeSockets.set(socket.id, { userId, username });
+    console.log(`[Socket.io] User joined: ${username} (ID: ${userId}, Socket: ${socket.id})`);
     broadcastOnlineUsers();
   });
 
@@ -64,41 +63,41 @@ io.on('connection', (socket) => {
     const newMessage = {
       id: messageData.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       channelId: messageData.channelId || 'introductions',
-      user: messageData.user,
+      userId: messageData.userId, // Unique user ID distinguishing sender even if usernames match
+      user: messageData.user,     // Display username (e.g. "Alan")
       text: messageData.text,
       timestamp: messageData.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       likes: 0,
-      likedBy: [],
-      reactions: {} // emoji -> array of usernames who reacted
+      likedBy: [], // Array of unique userIds who liked
+      reactions: {} // emoji -> Array of unique userIds who reacted
     };
 
     messages.push(newMessage);
-    console.log(`[Socket.io] [${newMessage.channelId}] Message from ${newMessage.user}: "${newMessage.text}"`);
+    console.log(`[Socket.io] [${newMessage.channelId}] Message from ${newMessage.user} (${newMessage.userId}): "${newMessage.text}"`);
 
     // Broadcast message to all currently connected clients
     io.emit('message:new', newMessage);
   });
 
-  // Client toggles like on a message
-  // If user already liked it, clicking again removes the like!
-  socket.on('message:like', ({ messageId, username, channelId }) => {
+  // Client toggles like on a message (tracked by unique userId)
+  socket.on('message:like', ({ messageId, userId, username, channelId }) => {
     const message = messages.find((m) => m.id === messageId);
     if (message) {
       if (!Array.isArray(message.likedBy)) {
         message.likedBy = [];
       }
 
-      const existingIndex = message.likedBy.indexOf(username);
+      const existingIndex = message.likedBy.indexOf(userId);
       if (existingIndex !== -1) {
         // User already liked this message -> remove like (toggle off)
         message.likedBy.splice(existingIndex, 1);
         message.likes = Math.max(0, (message.likes || 1) - 1);
-        console.log(`[Socket.io] User ${username} removed like from ${messageId} (New count: ${message.likes})`);
+        console.log(`[Socket.io] User ${username} (${userId}) unliked ${messageId} (New count: ${message.likes})`);
       } else {
         // User hasn't liked this message -> add like (toggle on)
-        message.likedBy.push(username);
+        message.likedBy.push(userId);
         message.likes = (message.likes || 0) + 1;
-        console.log(`[Socket.io] User ${username} liked ${messageId} (New count: ${message.likes})`);
+        console.log(`[Socket.io] User ${username} (${userId}) liked ${messageId} (New count: ${message.likes})`);
       }
 
       // Broadcast updated like state to all clients
@@ -111,8 +110,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Client toggles an emoji reaction on a message
-  socket.on('message:reaction', ({ messageId, username, emoji, channelId }) => {
+  // Client toggles an emoji reaction on a message (tracked by unique userId)
+  socket.on('message:reaction', ({ messageId, userId, username, emoji, channelId }) => {
     const message = messages.find((m) => m.id === messageId);
     if (message) {
       if (!message.reactions || typeof message.reactions !== 'object') {
@@ -123,18 +122,18 @@ io.on('connection', (socket) => {
         message.reactions[emoji] = [];
       }
 
-      const userIndex = message.reactions[emoji].indexOf(username);
+      const userIndex = message.reactions[emoji].indexOf(userId);
       if (userIndex !== -1) {
         // User already added this emoji reaction -> remove it (toggle off)
         message.reactions[emoji].splice(userIndex, 1);
         if (message.reactions[emoji].length === 0) {
           delete message.reactions[emoji];
         }
-        console.log(`[Socket.io] User ${username} removed reaction "${emoji}" from message ${messageId}`);
+        console.log(`[Socket.io] User ${username} (${userId}) removed reaction "${emoji}" from ${messageId}`);
       } else {
         // User hasn't reacted with this emoji -> add it (toggle on)
-        message.reactions[emoji].push(username);
-        console.log(`[Socket.io] User ${username} reacted with "${emoji}" on message ${messageId}`);
+        message.reactions[emoji].push(userId);
+        console.log(`[Socket.io] User ${username} (${userId}) reacted with "${emoji}" on ${messageId}`);
       }
 
       // Broadcast updated reactions for this message to all clients
@@ -153,9 +152,9 @@ io.on('connection', (socket) => {
 
   // Handle client disconnection
   socket.on('disconnect', () => {
-    const leavingUser = activeSockets.get(socket.id);
+    const leaving = activeSockets.get(socket.id);
     activeSockets.delete(socket.id);
-    console.log(`[Socket.io] Client disconnected: ${socket.id} (${leavingUser || 'unknown'})`);
+    console.log(`[Socket.io] Client disconnected: ${socket.id} (${leaving?.username || 'unknown'})`);
     broadcastOnlineUsers();
   });
 });

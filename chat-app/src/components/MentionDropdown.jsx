@@ -11,7 +11,14 @@ export default function MentionDropdown({
 }) {
   const dropdownRef = useRef(null);
 
-  // Build the list of mention candidates: "@all" is always available + active online users
+  // Extract unique active usernames
+  const uniqueActiveNames = Array.from(
+    new Set(
+      activeUsers.map((u) => (typeof u === 'string' ? u : u?.username)).filter(Boolean)
+    )
+  );
+
+  // Build the list of mention candidates: "@all" + unique active members
   const candidates = [
     {
       type: 'all',
@@ -19,10 +26,10 @@ export default function MentionDropdown({
       displayName: 'all',
       subtext: 'Notify everyone in channel'
     },
-    ...activeUsers.map((user) => ({
+    ...uniqueActiveNames.map((name) => ({
       type: 'user',
-      username: user,
-      displayName: user,
+      username: name,
+      displayName: name,
       subtext: 'Active member'
     }))
   ];

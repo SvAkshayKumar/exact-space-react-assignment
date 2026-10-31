@@ -38,15 +38,26 @@ function renderMessageText(text) {
   });
 }
 
-export default function ChatMessageItem({ message, onLike, onToggleReaction, currentUser }) {
-  const { id, user, text, timestamp, likes = 0, likedBy = [], reactions = {} } = message;
+export default function ChatMessageItem({
+  message,
+  onLike,
+  onToggleReaction,
+  currentUserId,
+  currentUsername
+}) {
+  const { id, userId, user, text, timestamp, likes = 0, likedBy = [], reactions = {} } = message;
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
-  const avatarColor = getUserColor(user);
+  // Uniquely identify if this message belongs to the current user by unique userId
+  const isMyMessage = userId === currentUserId;
+  // If another user happens to have the exact same username
+  const isSameNameOtherUser = !isMyMessage && user === currentUsername;
+
+  const avatarColor = getUserColor(user, userId);
   const initials = getInitials(user);
 
-  // Check if current user has already liked this message
-  const isLikedByMe = Array.isArray(likedBy) && likedBy.includes(currentUser);
+  // Check if current user has already liked this message by unique userId
+  const isLikedByMe = Array.isArray(likedBy) && likedBy.includes(currentUserId);
 
   // Filter out any reaction keys that have empty user arrays
   const activeReactions = Object.entries(reactions).filter(
@@ -54,11 +65,11 @@ export default function ChatMessageItem({ message, onLike, onToggleReaction, cur
   );
 
   return (
-    <div className="chat-message-row">
+    <div className={`chat-message-row ${isMyMessage ? 'is-own-message' : 'is-other-message'}`}>
       <div
         className="chat-avatar"
         style={{ backgroundColor: avatarColor }}
-        title={user}
+        title={`${user} (${isMyMessage ? 'You' : 'Member'})`}
       >
         {initials}
       </div>
@@ -66,7 +77,13 @@ export default function ChatMessageItem({ message, onLike, onToggleReaction, cur
       <div className="chat-message-content">
         <div className="chat-message-header">
           <span className="chat-user-name">
-            {user} {user === currentUser && <span className="chat-you-tag">(You)</span>}
+            {user}
+            {isMyMessage && <span className="chat-you-tag">(You)</span>}
+            {isSameNameOtherUser && (
+              <span className="chat-same-name-tag" title="Another user with the same name">
+                (Other {user})
+              </span>
+            )}
           </span>
           <span className="chat-timestamp">{timestamp}</span>
         </div>
@@ -115,18 +132,18 @@ export default function ChatMessageItem({ message, onLike, onToggleReaction, cur
         {/* Display emoji reactions on this message */}
         {activeReactions.length > 0 && (
           <div className="chat-reactions-row">
-            {activeReactions.map(([emoji, users]) => {
-              const hasReacted = users.includes(currentUser);
+            {activeReactions.map(([emoji, userIds]) => {
+              const hasReacted = Array.isArray(userIds) && userIds.includes(currentUserId);
               return (
                 <button
                   key={emoji}
                   type="button"
                   className={`chat-reaction-pill ${hasReacted ? 'reacted-by-me' : ''}`}
                   onClick={() => onToggleReaction(id, emoji)}
-                  title={`${users.join(', ')} reacted with ${emoji}`}
+                  title={`${userIds.length} ${userIds.length === 1 ? 'person' : 'people'} reacted with ${emoji}`}
                 >
                   <span className="reaction-pill-emoji">{emoji}</span>
-                  <span className="reaction-pill-count">{users.length}</span>
+                  <span className="reaction-pill-count">{userIds.length}</span>
                 </button>
               );
             })}

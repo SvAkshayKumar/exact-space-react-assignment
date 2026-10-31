@@ -6,7 +6,8 @@ export default function ChatMessageList({
   onLike,
   onToggleReaction,
   typingUser,
-  currentUser,
+  currentUserId,
+  currentUsername,
   channelName
 }) {
   const messagesEndRef = useRef(null);
@@ -36,19 +37,20 @@ export default function ChatMessageList({
               message={msg}
               onLike={onLike}
               onToggleReaction={onToggleReaction}
-              currentUser={currentUser}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
             />
           ))
         )}
 
-        {typingUser && typingUser !== currentUser && (
+        {typingUser && typingUser.userId !== currentUserId && (
           <div className="chat-typing-indicator">
             <span className="typing-dots">
               <span></span>
               <span></span>
               <span></span>
             </span>
-            <span className="typing-text">{typingUser} is typing...</span>
+            <span className="typing-text">{typingUser.username || typingUser} is typing...</span>
           </div>
         )}
 

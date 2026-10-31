@@ -17,3 +17,4 @@ export const CHANNELS = [
 ];
 
 export const DEFAULT_CHANNEL_ID = 'introductions';
+

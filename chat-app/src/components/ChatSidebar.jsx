@@ -1,28 +1,31 @@
 import React from 'react';
-import { Hash, Plus, MessageSquare } from 'lucide-react';
+import { Hash } from 'lucide-react';
 import { CHANNELS } from '../constants/channels';
 import { getInitials, getUserColor } from '../constants/users';
 
 export default function ChatSidebar({
   activeChannelId,
   onSelectChannel,
-  currentUser,
-  onlineUsers = [],
+  currentUser, // { userId, username }
+  onlineUsers = [], // Array of { userId, username }
   channelMessages = {}
 }) {
+  const currentUsername = currentUser?.username || 'Alan';
+  const currentUserId = currentUser?.userId || '';
+
   return (
     <aside className="chat-sidebar">
-      {/* Current User Profile header matching the reference GIF */}
+      {/* Current User Profile header */}
       <div className="sidebar-profile">
         <div
           className="sidebar-avatar"
-          style={{ backgroundColor: getUserColor(currentUser) }}
+          style={{ backgroundColor: getUserColor(currentUsername, currentUserId) }}
         >
-          {getInitials(currentUser)}
+          {getInitials(currentUsername)}
           <span className="online-indicator" />
         </div>
         <div className="sidebar-user-details">
-          <span className="sidebar-user-name">@{currentUser}</span>
+          <span className="sidebar-user-name">@{currentUsername}</span>
           <span className="sidebar-user-role">Online &bull; Active</span>
         </div>
       </div>
@@ -68,20 +71,29 @@ export default function ChatSidebar({
           {onlineUsers.length === 0 ? (
             <div className="sidebar-empty-members">Connecting...</div>
           ) : (
-            onlineUsers.map((user) => (
-              <div key={user} className="sidebar-user-row">
-                <span
-                  className="sidebar-user-dot"
-                  style={{ backgroundColor: getUserColor(user) }}
-                >
-                  {getInitials(user)}
-                </span>
-                <span className="sidebar-user-name-text">
-                  @{user} {user === currentUser && <span className="sidebar-you-tag">(You)</span>}
-                </span>
-                <span className="sidebar-online-green" />
-              </div>
-            ))
+            onlineUsers.map((member, idx) => {
+              const memberName = typeof member === 'string' ? member : member.username;
+              const memberId = typeof member === 'string' ? '' : member.userId;
+              const isMe = memberId === currentUserId;
+              const isDuplicate = !isMe && memberName === currentUsername;
+
+              return (
+                <div key={memberId || `${memberName}_${idx}`} className="sidebar-user-row">
+                  <span
+                    className="sidebar-user-dot"
+                    style={{ backgroundColor: getUserColor(memberName, memberId) }}
+                  >
+                    {getInitials(memberName)}
+                  </span>
+                  <span className="sidebar-user-name-text">
+                    @{memberName}
+                    {isMe && <span className="sidebar-you-tag">(You)</span>}
+                    {isDuplicate && <span className="sidebar-other-tag">(Other)</span>}
+                  </span>
+                  <span className="sidebar-online-green" />
+                </div>
+              );
+            })
           )}
         </div>
       </div>

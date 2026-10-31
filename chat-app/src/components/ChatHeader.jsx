@@ -9,6 +9,9 @@ export default function ChatHeader({
   onResetUser,
   onToggleSidebar
 }) {
+  const currentUsername = typeof currentUser === 'string' ? currentUser : currentUser?.username || 'Alan';
+  const currentUserId = typeof currentUser === 'string' ? '' : currentUser?.userId || '';
+
   return (
     <header className="chat-header">
       <div className="chat-header-info">
@@ -39,15 +42,15 @@ export default function ChatHeader({
         </div>
 
         {/* Current user persistent profile pill */}
-        {currentUser && (
-          <div className="chat-user-pill" title={`Your constant user: @${currentUser}`}>
+        {currentUsername && (
+          <div className="chat-user-pill" title={`Your constant identity: @${currentUsername} (ID: ${currentUserId.slice(-5)})`}>
             <span
               className="chat-user-pill-avatar"
-              style={{ backgroundColor: getUserColor(currentUser) }}
+              style={{ backgroundColor: getUserColor(currentUsername, currentUserId) }}
             >
-              {getInitials(currentUser)}
+              {getInitials(currentUsername)}
             </span>
-            <span className="chat-user-pill-name">@{currentUser}</span>
+            <span className="chat-user-pill-name">@{currentUsername}</span>
             <button
               type="button"
               className="chat-clear-cache-btn"

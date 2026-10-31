@@ -499,9 +499,37 @@
 
 .chat-you-tag {
   font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background-color: #dbeafe;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.chat-same-name-tag {
+  font-size: 11px;
   font-weight: 500;
-  color: #64748b;
-  margin-left: 2px;
+  color: #b45309;
+  background-color: #fef3c7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.sidebar-other-tag {
+  font-size: 10px;
+  font-weight: 500;
+  color: #b45309;
+  background-color: #fef3c7;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
+.chat-message-row.is-own-message .chat-bubble {
+  background-color: #f0f7ff;
+  border: 1px solid #dbeafe;
 }
 
 .chat-timestamp {

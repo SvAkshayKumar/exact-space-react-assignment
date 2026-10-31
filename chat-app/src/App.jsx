@@ -4,7 +4,7 @@ import ChatSidebar from './components/ChatSidebar';
 import ChatMessageList from './components/ChatMessageList';
 import ChatInput from './components/ChatInput';
 import { socketService } from './services/socketService';
-import { getPersistentUser, user_list } from './constants/users';
+import { getPersistentProfile, resetPersistentProfile } from './constants/users';
 import { CHANNELS, DEFAULT_CHANNEL_ID } from './constants/channels';
 import './App.css';
 
@@ -22,12 +22,12 @@ export default function App() {
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineCount, setOnlineCount] = useState(1);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]); // Array of { userId, username }
   const [typingUser, setTypingUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Persistent user name stored in cache (localStorage)
-  const [currentUser, setCurrentUser] = useState(() => getPersistentUser());
+  // Persistent user profile with unique userId and assigned username
+  const [currentUser, setCurrentUser] = useState(() => getPersistentProfile());
 
   // Current active channel object
   const currentChannel = useMemo(
@@ -102,9 +102,9 @@ export default function App() {
     });
 
     // Subscribe to typing notifications
-    const unsubTyping = socketService.subscribeToTyping(({ user, isTyping, channelId }) => {
+    const unsubTyping = socketService.subscribeToTyping(({ userId, user, isTyping, channelId }) => {
       if (!channelId || channelId === activeChannelId) {
-        setTypingUser(isTyping ? user : null);
+        setTypingUser(isTyping ? { userId, username: user } : null);
       }
     });
 
@@ -119,19 +119,17 @@ export default function App() {
   }, [currentUser, activeChannelId]);
 
   /**
-   * Reset user name cache and assign a new constant name
+   * Reset user profile cache and assign a new constant identity
    */
   const handleResetUser = () => {
-    localStorage.removeItem('exactspace_chat_username');
-    const remaining = user_list.filter((u) => u !== currentUser);
-    const newUser = remaining[Math.floor(Math.random() * remaining.length)] || user_list[0];
-    localStorage.setItem('exactspace_chat_username', newUser);
-    setCurrentUser(newUser);
-    socketService.join(newUser);
+    const newProfile = resetPersistentProfile(currentUser.username);
+    setCurrentUser(newProfile);
+    socketService.join(newProfile);
   };
 
   /**
    * Send a chat message in the active channel as the constant current user
+   * Attaches sender's unique userId so messages are never confused even if usernames match!
    */
   const handleSendMessage = useCallback((text) => {
     const now = new Date();
@@ -140,7 +138,8 @@ export default function App() {
     const newMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       channelId: activeChannelId,
-      user: currentUser,
+      userId: currentUser.userId,      // Unique sender ID
+      user: currentUser.username,      // Display name
       text,
       timestamp,
       likes: 0,
@@ -161,9 +160,11 @@ export default function App() {
 
   /**
    * Handle liking/unliking a message:
-   * Clicking again removes the like instead of increasing it.
+   * Tracked by unique userId so duplicate usernames don't conflict!
    */
   const handleLikeMessage = useCallback((messageId) => {
+    const myId = currentUser.userId;
+
     // Optimistic UI update
     setChannelMessages((prev) => {
       const msgs = prev[activeChannelId] || [];
@@ -171,17 +172,17 @@ export default function App() {
         if (msg.id !== messageId) return msg;
 
         const currentLikedBy = Array.isArray(msg.likedBy) ? [...msg.likedBy] : [];
-        const index = currentLikedBy.indexOf(currentUser);
+        const index = currentLikedBy.indexOf(myId);
         let updatedLikedBy;
         let updatedLikes;
 
         if (index !== -1) {
-          // Already liked -> remove like
-          updatedLikedBy = currentLikedBy.filter((u) => u !== currentUser);
+          // Already liked by this user -> remove like
+          updatedLikedBy = currentLikedBy.filter((id) => id !== myId);
           updatedLikes = Math.max(0, (msg.likes || 1) - 1);
         } else {
-          // Not yet liked -> add like
-          updatedLikedBy = [...currentLikedBy, currentUser];
+          // Not yet liked by this user -> add like
+          updatedLikedBy = [...currentLikedBy, myId];
           updatedLikes = (msg.likes || 0) + 1;
         }
 
@@ -199,14 +200,17 @@ export default function App() {
     });
 
     if (isConnected) {
-      socketService.publishLike(messageId, currentUser, activeChannelId);
+      socketService.publishLike(messageId, currentUser.userId, currentUser.username, activeChannelId);
     }
   }, [currentUser, activeChannelId, isConnected]);
 
   /**
-   * Handle adding or toggling an emoji reaction on any chat message
+   * Handle adding or toggling an emoji reaction on any chat message:
+   * Tracked by unique userId so duplicate usernames don't conflict!
    */
   const handleToggleReaction = useCallback((messageId, emoji) => {
+    const myId = currentUser.userId;
+
     // Optimistic UI update
     setChannelMessages((prev) => {
       const msgs = prev[activeChannelId] || [];
@@ -215,7 +219,7 @@ export default function App() {
 
         const currentReactions = { ...(msg.reactions || {}) };
         const userList = Array.isArray(currentReactions[emoji]) ? [...currentReactions[emoji]] : [];
-        const userIdx = userList.indexOf(currentUser);
+        const userIdx = userList.indexOf(myId);
 
         if (userIdx !== -1) {
           // User already reacted -> remove reaction (toggle off)
@@ -227,7 +231,7 @@ export default function App() {
           }
         } else {
           // User hasn't reacted -> add reaction (toggle on)
-          userList.push(currentUser);
+          userList.push(myId);
           currentReactions[emoji] = userList;
         }
 
@@ -244,7 +248,7 @@ export default function App() {
     });
 
     if (isConnected) {
-      socketService.publishReaction(messageId, currentUser, emoji, activeChannelId);
+      socketService.publishReaction(messageId, currentUser.userId, currentUser.username, emoji, activeChannelId);
     }
   }, [currentUser, activeChannelId, isConnected]);
 
@@ -253,12 +257,9 @@ export default function App() {
    */
   const handleTyping = useCallback((isTyping) => {
     if (isConnected) {
-      socketService.publishTyping(currentUser, isTyping, activeChannelId);
+      socketService.publishTyping(currentUser.userId, currentUser.username, isTyping, activeChannelId);
     }
   }, [isConnected, currentUser, activeChannelId]);
-
-  // Active users available for @mentions (filter to active users online right now)
-  const activeMembersForMention = onlineUsers.length > 0 ? onlineUsers : [currentUser];
 
   // Current messages for the active channel
   const activeMessages = channelMessages[activeChannelId] || [];
@@ -295,7 +296,8 @@ export default function App() {
           onLike={handleLikeMessage}
           onToggleReaction={handleToggleReaction}
           typingUser={typingUser}
-          currentUser={currentUser}
+          currentUserId={currentUser.userId}
+          currentUsername={currentUser.username}
           channelName={currentChannel.name}
         />
 
@@ -303,7 +305,7 @@ export default function App() {
         <ChatInput
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
-          activeUsers={activeMembersForMention}
+          activeUsers={onlineUsers.length > 0 ? onlineUsers : [currentUser]}
         />
       </main>
 
