@@ -1,0 +1,27 @@
+{
+  "name": "react-assignments",
+  "version": "1.0.0",
+  "description": "ExactSpace React Assignments: Chat App (with all Stretch Goals) and Infinite Scroll Photo Gallery",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix chat-app install && npm --prefix photo-gallery install",
+    "dev:chat": "npm --prefix chat-app run dev",
+    "client:chat": "npm --prefix chat-app run client",
+    "server:chat": "npm --prefix chat-app run server",
+    "dev:gallery": "npm --prefix photo-gallery run dev",
+    "build:all": "npm --prefix chat-app run build && npm --prefix photo-gallery run build",
+    "build:chat": "npm --prefix chat-app run build",
+    "build:gallery": "npm --prefix photo-gallery run build"
+  },
+  "keywords": [
+    "react",
+    "socket.io",
+    "express",
+    "infinite-scroll",
+    "chat-app",
+    "photo-gallery",
+    "exactspace"
+  ],
+  "author": "",
+  "license": "ISC"
+}
