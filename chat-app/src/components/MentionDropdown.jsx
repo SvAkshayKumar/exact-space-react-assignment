@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { getInitials, getUserColor } from '../constants/users';
+import { Volume2 } from 'lucide-react';
 
 export default function MentionDropdown({
   activeUsers = [],
@@ -10,9 +11,25 @@ export default function MentionDropdown({
 }) {
   const dropdownRef = useRef(null);
 
-  // Only currently active/online users are available for mentions
-  const filteredUsers = activeUsers.filter((u) =>
-    u.toLowerCase().startsWith(filterText.toLowerCase())
+  // Build the list of mention candidates: "@all" is always available + active online users
+  const candidates = [
+    {
+      type: 'all',
+      username: 'all',
+      displayName: 'all',
+      subtext: 'Notify everyone in channel'
+    },
+    ...activeUsers.map((user) => ({
+      type: 'user',
+      username: user,
+      displayName: user,
+      subtext: 'Active member'
+    }))
+  ];
+
+  // Filter candidates matching typed text
+  const filtered = candidates.filter((item) =>
+    item.username.toLowerCase().startsWith(filterText.toLowerCase())
   );
 
   useEffect(() => {
@@ -25,20 +42,11 @@ export default function MentionDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  if (activeUsers.length === 0) {
+  if (filtered.length === 0) {
     return (
       <div className="mention-dropdown-menu" ref={dropdownRef}>
-        <div className="mention-header">Active Members</div>
-        <div className="mention-empty">No other active users online</div>
-      </div>
-    );
-  }
-
-  if (filteredUsers.length === 0) {
-    return (
-      <div className="mention-dropdown-menu" ref={dropdownRef}>
-        <div className="mention-header">Active Members</div>
-        <div className="mention-empty">No matching active users online</div>
+        <div className="mention-header">Mentions</div>
+        <div className="mention-empty">No matching members or mentions</div>
       </div>
     );
   }
@@ -46,27 +54,40 @@ export default function MentionDropdown({
   return (
     <div className="mention-dropdown-menu" ref={dropdownRef} role="listbox">
       <div className="mention-header">
-        <span>Active Members ({filteredUsers.length})</span>
+        <span>Mentions ({filtered.length})</span>
       </div>
-      {filteredUsers.map((user, idx) => {
+      {filtered.map((item, idx) => {
         const isSelected = idx === selectedIndex;
+        const isAll = item.type === 'all';
+
         return (
           <button
-            key={user}
+            key={item.username}
             type="button"
             role="option"
             aria-selected={isSelected}
-            className={`mention-item ${isSelected ? 'selected' : ''}`}
-            onClick={() => onSelectUser(user)}
+            className={`mention-item ${isSelected ? 'selected' : ''} ${isAll ? 'mention-all-item' : ''}`}
+            onClick={() => onSelectUser(item.username)}
           >
-            <div
-              className="mention-avatar"
-              style={{ backgroundColor: getUserColor(user) }}
-            >
-              {getInitials(user)}
+            {isAll ? (
+              <div className="mention-avatar mention-avatar-all">
+                <Volume2 size={14} />
+              </div>
+            ) : (
+              <div
+                className="mention-avatar"
+                style={{ backgroundColor: getUserColor(item.username) }}
+              >
+                {getInitials(item.username)}
+              </div>
+            )}
+            <div className="mention-item-info">
+              <span className="mention-username">@{item.displayName}</span>
+              <span className="mention-subtext">{item.subtext}</span>
             </div>
-            <span className="mention-username">@{user}</span>
-            <span className="mention-online-indicator" title="Active now">●</span>
+            {!isAll && (
+              <span className="mention-online-indicator" title="Active now">●</span>
+            )}
           </button>
         );
       })}

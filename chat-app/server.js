@@ -63,15 +63,17 @@ io.on('connection', (socket) => {
   socket.on('message:send', (messageData) => {
     const newMessage = {
       id: messageData.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      channelId: messageData.channelId || 'introductions',
       user: messageData.user,
       text: messageData.text,
       timestamp: messageData.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       likes: 0,
-      likedBy: []
+      likedBy: [],
+      reactions: {} // emoji -> array of usernames who reacted
     };
 
     messages.push(newMessage);
-    console.log(`[Socket.io] Message from ${newMessage.user}: "${newMessage.text}"`);
+    console.log(`[Socket.io] [${newMessage.channelId}] Message from ${newMessage.user}: "${newMessage.text}"`);
 
     // Broadcast message to all currently connected clients
     io.emit('message:new', newMessage);
@@ -79,7 +81,7 @@ io.on('connection', (socket) => {
 
   // Client toggles like on a message
   // If user already liked it, clicking again removes the like!
-  socket.on('message:like', ({ messageId, username }) => {
+  socket.on('message:like', ({ messageId, username, channelId }) => {
     const message = messages.find((m) => m.id === messageId);
     if (message) {
       if (!Array.isArray(message.likedBy)) {
@@ -102,8 +104,44 @@ io.on('connection', (socket) => {
       // Broadcast updated like state to all clients
       io.emit('message:liked', {
         messageId,
+        channelId: channelId || message.channelId,
         likes: message.likes,
         likedBy: message.likedBy
+      });
+    }
+  });
+
+  // Client toggles an emoji reaction on a message
+  socket.on('message:reaction', ({ messageId, username, emoji, channelId }) => {
+    const message = messages.find((m) => m.id === messageId);
+    if (message) {
+      if (!message.reactions || typeof message.reactions !== 'object') {
+        message.reactions = {};
+      }
+
+      if (!Array.isArray(message.reactions[emoji])) {
+        message.reactions[emoji] = [];
+      }
+
+      const userIndex = message.reactions[emoji].indexOf(username);
+      if (userIndex !== -1) {
+        // User already added this emoji reaction -> remove it (toggle off)
+        message.reactions[emoji].splice(userIndex, 1);
+        if (message.reactions[emoji].length === 0) {
+          delete message.reactions[emoji];
+        }
+        console.log(`[Socket.io] User ${username} removed reaction "${emoji}" from message ${messageId}`);
+      } else {
+        // User hasn't reacted with this emoji -> add it (toggle on)
+        message.reactions[emoji].push(username);
+        console.log(`[Socket.io] User ${username} reacted with "${emoji}" on message ${messageId}`);
+      }
+
+      // Broadcast updated reactions for this message to all clients
+      io.emit('message:reaction', {
+        messageId,
+        channelId: channelId || message.channelId,
+        reactions: message.reactions
       });
     }
   });

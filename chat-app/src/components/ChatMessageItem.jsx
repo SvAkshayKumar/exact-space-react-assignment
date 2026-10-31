@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbsUp } from '@fortawesome/free-solid-svg-icons';
+import { SmilePlus } from 'lucide-react';
 import { getInitials, getUserColor, user_list } from '../constants/users';
+import ReactionPicker from './ReactionPicker';
 
 /**
- * Parses message text to highlight @mentions (e.g., @Alan, @Bob)
+ * Parses message text to highlight @all and @mentions (e.g., @Alan, @Bob)
  */
 function renderMessageText(text) {
   if (!text) return '';
@@ -13,6 +15,13 @@ function renderMessageText(text) {
   const parts = text.split(mentionPattern);
 
   return parts.map((part, index) => {
+    if (part.toLowerCase() === '@all') {
+      return (
+        <span key={index} className="chat-mention-pill mention-all" title="Mentions all channel members">
+          @all
+        </span>
+      );
+    }
     if (part.startsWith('@')) {
       const username = part.slice(1);
       const isKnownUser = user_list.includes(username);
@@ -29,13 +38,20 @@ function renderMessageText(text) {
   });
 }
 
-export default function ChatMessageItem({ message, onLike, currentUser }) {
-  const { id, user, text, timestamp, likes = 0, likedBy = [] } = message;
+export default function ChatMessageItem({ message, onLike, onToggleReaction, currentUser }) {
+  const { id, user, text, timestamp, likes = 0, likedBy = [], reactions = {} } = message;
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+
   const avatarColor = getUserColor(user);
   const initials = getInitials(user);
 
   // Check if current user has already liked this message
   const isLikedByMe = Array.isArray(likedBy) && likedBy.includes(currentUser);
+
+  // Filter out any reaction keys that have empty user arrays
+  const activeReactions = Object.entries(reactions).filter(
+    ([, users]) => Array.isArray(users) && users.length > 0
+  );
 
   return (
     <div className="chat-message-row">
@@ -60,8 +76,29 @@ export default function ChatMessageItem({ message, onLike, currentUser }) {
             {renderMessageText(text)}
           </div>
 
-          {/* Like button on the right end: Clicking again removes the like */}
-          <div className="chat-like-section">
+          {/* Action buttons (Like & Emoji Reaction) */}
+          <div className="chat-message-actions">
+            {/* Emoji Reaction button */}
+            <div className="chat-reaction-trigger-container">
+              <button
+                type="button"
+                className={`chat-reaction-trigger-btn ${showReactionPicker ? 'active' : ''}`}
+                onClick={() => setShowReactionPicker(!showReactionPicker)}
+                title="Add emoji reaction"
+                aria-label="Add reaction"
+              >
+                <SmilePlus size={15} />
+              </button>
+
+              {showReactionPicker && (
+                <ReactionPicker
+                  onSelectEmoji={(emoji) => onToggleReaction(id, emoji)}
+                  onClose={() => setShowReactionPicker(false)}
+                />
+              )}
+            </div>
+
+            {/* Like button: Clicking toggles like/unlike */}
             <button
               type="button"
               className={`chat-like-btn ${isLikedByMe ? 'liked' : ''}`}
@@ -74,6 +111,27 @@ export default function ChatMessageItem({ message, onLike, currentUser }) {
             </button>
           </div>
         </div>
+
+        {/* Display emoji reactions on this message */}
+        {activeReactions.length > 0 && (
+          <div className="chat-reactions-row">
+            {activeReactions.map(([emoji, users]) => {
+              const hasReacted = users.includes(currentUser);
+              return (
+                <button
+                  key={emoji}
+                  type="button"
+                  className={`chat-reaction-pill ${hasReacted ? 'reacted-by-me' : ''}`}
+                  onClick={() => onToggleReaction(id, emoji)}
+                  title={`${users.join(', ')} reacted with ${emoji}`}
+                >
+                  <span className="reaction-pill-emoji">{emoji}</span>
+                  <span className="reaction-pill-count">{users.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

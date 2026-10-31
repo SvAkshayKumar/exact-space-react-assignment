@@ -1,20 +1,40 @@
 import React from 'react';
 import { getInitials, getUserColor } from '../constants/users';
+import { Hash, Menu } from 'lucide-react';
 
-export default function ChatHeader({ onlineCount = 1, currentUser, onResetUser }) {
+export default function ChatHeader({
+  channel,
+  onlineCount = 1,
+  currentUser,
+  onResetUser,
+  onToggleSidebar
+}) {
   return (
     <header className="chat-header">
       <div className="chat-header-info">
-        <h1 className="chat-channel-name">Introductions</h1>
-        <p className="chat-channel-desc">This Channel Is For Company Wide Chatter</p>
+        <div className="chat-header-title-row">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="chat-sidebar-toggle-btn"
+              onClick={onToggleSidebar}
+              title="Toggle sidebar channels"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+          <Hash size={20} className="chat-header-hash-icon" />
+          <h1 className="chat-channel-name">{channel?.name || 'Introductions'}</h1>
+        </div>
+        <p className="chat-channel-desc">{channel?.description || 'Company wide chatter'}</p>
       </div>
 
       <div className="chat-header-right">
-        {/* Real-time online count at the present moment */}
-        <div className="chat-online-pill" title={`${onlineCount} currently active in this channel`}>
+        {/* Real-time online count at present moment */}
+        <div className="chat-online-pill" title={`${onlineCount} currently active in chat`}>
           <span className="chat-online-pulse" />
           <span className="chat-online-count">
-            {onlineCount} {onlineCount === 1 ? 'person online' : 'people online'}
+            {onlineCount} {onlineCount === 1 ? 'online' : 'online'}
           </span>
         </div>
 

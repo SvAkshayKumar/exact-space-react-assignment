@@ -79,15 +79,21 @@ class SocketService {
     }
   }
 
-  publishLike(messageId, username) {
+  publishLike(messageId, username, channelId) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('message:like', { messageId, username });
+      this.socket.emit('message:like', { messageId, username, channelId });
     }
   }
 
-  publishTyping(user, isTyping) {
+  publishReaction(messageId, username, emoji, channelId) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('user:typing', { user, isTyping });
+      this.socket.emit('message:reaction', { messageId, username, emoji, channelId });
+    }
+  }
+
+  publishTyping(user, isTyping, channelId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('user:typing', { user, isTyping, channelId });
     }
   }
 
@@ -103,6 +109,12 @@ class SocketService {
     if (!this.socket) return () => {};
     this.socket.on('message:liked', callback);
     return () => this.socket.off('message:liked', callback);
+  }
+
+  subscribeToReactions(callback) {
+    if (!this.socket) return () => {};
+    this.socket.on('message:reaction', callback);
+    return () => this.socket.off('message:reaction', callback);
   }
 
   subscribeToOnlineUsers(callback) {

@@ -1,7 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import ChatMessageItem from './ChatMessageItem';
 
-export default function ChatMessageList({ messages, onLike, typingUser, currentUser }) {
+export default function ChatMessageList({
+  messages,
+  onLike,
+  onToggleReaction,
+  typingUser,
+  currentUser,
+  channelName
+}) {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = (behavior = 'smooth') => {
@@ -19,7 +26,8 @@ export default function ChatMessageList({ messages, onLike, typingUser, currentU
       <div className="chat-messages-container">
         {messages.length === 0 ? (
           <div className="chat-empty-state">
-            <p>No new messages since you joined. Type a message below to start chatting!</p>
+            <p>Welcome to <strong>#{channelName}</strong>!</p>
+            <p className="chat-empty-sub">No messages sent in this channel yet during this session. Say hello to start the chat!</p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -27,6 +35,7 @@ export default function ChatMessageList({ messages, onLike, typingUser, currentU
               key={msg.id}
               message={msg}
               onLike={onLike}
+              onToggleReaction={onToggleReaction}
               currentUser={currentUser}
             />
           ))

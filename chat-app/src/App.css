@@ -1,13 +1,250 @@
 /* Main App Layout */
 .chat-app-root {
   display: flex;
-  justify-content: center;
-  align-items: center;
   width: 100vw;
   height: 100vh;
-  background-color: #e5e9f0;
+  background-color: #ffffff;
   overflow: hidden;
   position: relative;
+}
+
+/* ==========================================================================
+   Left Sidebar (Conversations & Active Members)
+   ========================================================================== */
+.chat-sidebar-wrapper {
+  display: flex;
+  height: 100%;
+}
+
+.chat-sidebar {
+  width: 280px;
+  min-width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  gap: 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .chat-sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .chat-sidebar-wrapper.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .chat-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 40;
+  }
+}
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.online-indicator {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background-color: #10b981;
+  border: 2px solid #ffffff;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.sidebar-user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-user-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sidebar-user-role {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 6px;
+}
+
+.sidebar-channels-count {
+  font-size: 11px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-channel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  transition: all 0.18s;
+  text-align: left;
+  width: 100%;
+}
+
+.sidebar-channel-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.sidebar-channel-item.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.sidebar-channel-item.active .channel-hash-icon {
+  opacity: 1;
+}
+
+.channel-hash-icon {
+  opacity: 0.6;
+}
+
+.channel-item-name {
+  flex: 1;
+}
+
+.channel-msg-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background-color: #e2e8f0;
+  color: #475569;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.channel-msg-badge.badge-active {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+/* Active Members Section in Sidebar */
+.sidebar-members-list {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-users {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #334155;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.sidebar-user-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-user-name-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.sidebar-you-tag {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sidebar-online-green {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.sidebar-empty-members {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 6px;
 }
 
 /* ==========================================================================
@@ -15,20 +252,12 @@
    ========================================================================== */
 .chat-main-pane {
   flex: 1;
-  max-width: 900px;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #f1f3f7;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
-}
-
-@media (max-width: 900px) {
-  .chat-main-pane {
-    max-width: 100%;
-  }
 }
 
 /* Chat Header */
@@ -39,15 +268,42 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  padding: 0 24px;
   flex-shrink: 0;
   z-index: 5;
+}
+
+.chat-sidebar-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #4b5563;
+  margin-right: 6px;
+}
+
+@media (max-width: 768px) {
+  .chat-sidebar-toggle-btn {
+    display: inline-flex;
+  }
 }
 
 .chat-header-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.chat-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-header-hash-icon {
+  color: #64748b;
 }
 
 .chat-channel-name {
@@ -172,17 +428,23 @@
 
 .chat-empty-state {
   text-align: center;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  padding: 60px 20px;
-  background-color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  padding: 40px 20px;
+  background-color: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
   border: 1px dashed #d1d5db;
   margin: auto;
   max-width: 440px;
 }
 
-/* Message Item */
+.chat-empty-sub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+/* Message Row */
 .chat-message-row {
   display: flex;
   align-items: flex-start;
@@ -219,7 +481,7 @@
 .chat-message-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   max-width: 82%;
 }
 
@@ -281,12 +543,140 @@
   color: #1d4ed8;
 }
 
-/* Like button at the right end of the message: toggleable */
-.chat-like-section {
-  display: flex;
-  align-items: center;
+/* Special High-Visibility Badge for @all */
+.chat-mention-pill.mention-all {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-weight: 700;
 }
 
+/* Action buttons on message: Like & Emoji Reaction */
+.chat-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Emoji Reaction Trigger Button */
+.chat-reaction-trigger-container {
+  position: relative;
+}
+
+.chat-reaction-trigger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  color: #64748b;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.chat-reaction-trigger-btn:hover,
+.chat-reaction-trigger-btn.active {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #3b82f6;
+  transform: scale(1.08);
+}
+
+/* Reaction Picker Popover */
+.reaction-picker-popup {
+  position: absolute;
+  bottom: 38px;
+  left: 0;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 5px 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  animation: popIn 0.15s ease-out;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.reaction-picker-emojis {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reaction-picker-item {
+  font-size: 20px;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+
+.reaction-picker-item:hover {
+  transform: scale(1.3);
+  background-color: #f1f5f9;
+}
+
+/* Emoji Reaction Pills Row below message */
+.chat-reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.chat-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #475569;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.chat-reaction-pill:hover {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+.chat-reaction-pill.reacted-by-me {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.reaction-pill-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.reaction-pill-count {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Like Button */
 .chat-like-btn {
   display: flex;
   align-items: center;
@@ -559,7 +949,7 @@
   position: absolute;
   bottom: 78px;
   left: 28px;
-  width: 270px;
+  width: 290px;
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -597,6 +987,16 @@
   background-color: #eff6ff;
 }
 
+.mention-all-item {
+  background-color: #fffbeb;
+  border-bottom: 1px solid #fef3c7;
+}
+
+.mention-all-item:hover,
+.mention-all-item.selected {
+  background-color: #fef3c7;
+}
+
 .mention-avatar {
   width: 28px;
   height: 28px;
@@ -609,11 +1009,26 @@
   justify-content: center;
 }
 
+.mention-avatar-all {
+  background-color: #f59e0b;
+  color: #ffffff;
+}
+
+.mention-item-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .mention-username {
   font-size: 14px;
   font-weight: 600;
   color: #1f2937;
-  flex: 1;
+}
+
+.mention-subtext {
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 .mention-online-indicator {

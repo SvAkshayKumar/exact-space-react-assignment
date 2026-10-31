@@ -69,7 +69,8 @@ export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] })
   const handleKeyDown = (e) => {
     // If mention dropdown is open
     if (mentionState.isOpen) {
-      const filtered = activeUsers.filter((u) =>
+      const candidates = ['all', ...activeUsers];
+      const filtered = candidates.filter((u) =>
         u.toLowerCase().startsWith(mentionState.query.toLowerCase())
       );
 
@@ -238,7 +239,7 @@ export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] })
         <textarea
           ref={textareaRef}
           className="chat-textarea"
-          placeholder="Type Message (type @ to mention active members)..."
+          placeholder="Type Message (type @ to mention @all or active members)..."
           value={text}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -250,7 +251,7 @@ export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] })
           <button
             type="button"
             className="chat-action-btn"
-            title="Mention an active user (@)"
+            title="Mention @all or an active user (@)"
             aria-label="Mention a user"
             onClick={handleMentionButtonClick}
           >
