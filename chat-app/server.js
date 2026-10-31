@@ -20,101 +20,105 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5001;
 
-// Pre-seeded initial messages as shown in the GIF demo
-const initialMessages = [
-  {
-    id: 'msg-seed-1',
-    user: 'PubNub Bot',
-    text: 'Welcome to Team Chat. 👋 Send a message now to start interacting with other users in the app. ⬇️',
-    timestamp: '12:16',
-    likes: 2
-  },
-  {
-    id: 'msg-seed-2',
-    user: 'Gregory Goolsby',
-    text: 'Hey everyone!',
-    timestamp: '17:28',
-    likes: 1
-  },
-  {
-    id: 'msg-seed-3',
-    user: 'Elin Emmanuel',
-    text: 'Oh hi, Gregory! Rolande is around, too...',
-    timestamp: '17:30',
-    likes: 0
-  }
-];
+// Messages store for the current active server runtime
+let messages = [];
 
-let messages = [...initialMessages];
-let connectedUsersCount = 0;
+// Track active connected sockets and their usernames
+// socket.id -> username
+const activeSockets = new Map();
 
-// REST endpoints
+function broadcastOnlineUsers() {
+  const activeUsernames = Array.from(new Set(activeSockets.values())).filter(Boolean);
+  const totalCount = activeSockets.size;
+
+  io.emit('users:online', {
+    count: totalCount,
+    users: activeUsernames
+  });
+}
+
+// REST health endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    connectedUsers: connectedUsersCount,
-    messagesCount: messages.length,
+    onlineCount: activeSockets.size,
+    onlineUsers: Array.from(new Set(activeSockets.values())).filter(Boolean),
     timestamp: new Date().toISOString()
   });
 });
 
-app.get('/api/messages', (req, res) => {
-  res.json(messages);
-});
-
-// Socket.IO Publish & Subscribe Communication
+// Socket.IO Communication
 io.on('connection', (socket) => {
-  connectedUsersCount++;
-  console.log(`[Socket.io] Client connected: ${socket.id} (Total: ${connectedUsersCount})`);
+  console.log(`[Socket.io] Client connected: ${socket.id}`);
 
-  // Publish active user count to all connected clients
-  io.emit('users:count', connectedUsersCount);
+  // When user announces their persistent name
+  socket.on('user:join', ({ username }) => {
+    activeSockets.set(socket.id, username);
+    console.log(`[Socket.io] User joined: ${username} (Socket: ${socket.id})`);
+    broadcastOnlineUsers();
+  });
 
-  // Publish existing message history to the newly connected subscriber
-  socket.emit('message:history', messages);
-
-  // Subscribe to 'message:send' published by a client
+  // Client publishes a new message
+  // NOTE: Users only receive messages broadcast from their join instant onwards.
   socket.on('message:send', (messageData) => {
     const newMessage = {
       id: messageData.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       user: messageData.user,
       text: messageData.text,
       timestamp: messageData.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      likes: 0
+      likes: 0,
+      likedBy: []
     };
 
     messages.push(newMessage);
-    console.log(`[Socket.io] New message published by ${newMessage.user}: "${newMessage.text}"`);
+    console.log(`[Socket.io] Message from ${newMessage.user}: "${newMessage.text}"`);
 
-    // Publish (Broadcast) the new message to all subscribed clients
+    // Broadcast message to all currently connected clients
     io.emit('message:new', newMessage);
   });
 
-  // Subscribe to 'message:like' published by a client
-  socket.on('message:like', ({ messageId }) => {
+  // Client toggles like on a message
+  // If user already liked it, clicking again removes the like!
+  socket.on('message:like', ({ messageId, username }) => {
     const message = messages.find((m) => m.id === messageId);
     if (message) {
-      message.likes = (message.likes || 0) + 1;
-      console.log(`[Socket.io] Like published for message ${messageId} (New count: ${message.likes})`);
+      if (!Array.isArray(message.likedBy)) {
+        message.likedBy = [];
+      }
 
-      // Publish updated likes to all subscribed clients
+      const existingIndex = message.likedBy.indexOf(username);
+      if (existingIndex !== -1) {
+        // User already liked this message -> remove like (toggle off)
+        message.likedBy.splice(existingIndex, 1);
+        message.likes = Math.max(0, (message.likes || 1) - 1);
+        console.log(`[Socket.io] User ${username} removed like from ${messageId} (New count: ${message.likes})`);
+      } else {
+        // User hasn't liked this message -> add like (toggle on)
+        message.likedBy.push(username);
+        message.likes = (message.likes || 0) + 1;
+        console.log(`[Socket.io] User ${username} liked ${messageId} (New count: ${message.likes})`);
+      }
+
+      // Broadcast updated like state to all clients
       io.emit('message:liked', {
         messageId,
-        likes: message.likes
+        likes: message.likes,
+        likedBy: message.likedBy
       });
     }
   });
 
-  // Subscribe to 'user:typing' indicator
+  // User typing indicator
   socket.on('user:typing', (data) => {
     socket.broadcast.emit('user:typing', data);
   });
 
   // Handle client disconnection
   socket.on('disconnect', () => {
-    connectedUsersCount = Math.max(0, connectedUsersCount - 1);
-    console.log(`[Socket.io] Client disconnected: ${socket.id} (Total: ${connectedUsersCount})`);
-    io.emit('users:count', connectedUsersCount);
+    const leavingUser = activeSockets.get(socket.id);
+    activeSockets.delete(socket.id);
+    console.log(`[Socket.io] Client disconnected: ${socket.id} (${leavingUser || 'unknown'})`);
+    broadcastOnlineUsers();
   });
 });
 

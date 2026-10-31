@@ -9,7 +9,6 @@ import { getInitials, getUserColor, user_list } from '../constants/users';
 function renderMessageText(text) {
   if (!text) return '';
 
-  // Regex matches @Word
   const mentionPattern = /(@[A-Za-z0-9_]+)/g;
   const parts = text.split(mentionPattern);
 
@@ -30,10 +29,13 @@ function renderMessageText(text) {
   });
 }
 
-export default function ChatMessageItem({ message, onLike }) {
-  const { id, user, text, timestamp, likes = 0 } = message;
+export default function ChatMessageItem({ message, onLike, currentUser }) {
+  const { id, user, text, timestamp, likes = 0, likedBy = [] } = message;
   const avatarColor = getUserColor(user);
   const initials = getInitials(user);
+
+  // Check if current user has already liked this message
+  const isLikedByMe = Array.isArray(likedBy) && likedBy.includes(currentUser);
 
   return (
     <div className="chat-message-row">
@@ -47,7 +49,9 @@ export default function ChatMessageItem({ message, onLike }) {
 
       <div className="chat-message-content">
         <div className="chat-message-header">
-          <span className="chat-user-name">{user}</span>
+          <span className="chat-user-name">
+            {user} {user === currentUser && <span className="chat-you-tag">(You)</span>}
+          </span>
           <span className="chat-timestamp">{timestamp}</span>
         </div>
 
@@ -56,13 +60,13 @@ export default function ChatMessageItem({ message, onLike }) {
             {renderMessageText(text)}
           </div>
 
-          {/* Like button on the right end of the chat message */}
+          {/* Like button on the right end: Clicking again removes the like */}
           <div className="chat-like-section">
             <button
               type="button"
-              className={`chat-like-btn ${likes > 0 ? 'liked' : ''}`}
+              className={`chat-like-btn ${isLikedByMe ? 'liked' : ''}`}
               onClick={() => onLike(id)}
-              title="Like this message"
+              title={isLikedByMe ? 'Unlike this message' : 'Like this message'}
               aria-label={`Like message by ${user}, current likes: ${likes}`}
             >
               <FontAwesomeIcon icon={faThumbsUp} className="like-icon" />

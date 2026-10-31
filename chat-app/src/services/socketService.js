@@ -6,36 +6,53 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.isConnected = false;
+    this.currentUsername = null;
     this.connectionListeners = new Set();
   }
 
-  connect() {
-    if (this.socket) return;
+  connect(username) {
+    if (username) {
+      this.currentUsername = username;
+    }
+
+    if (this.socket) {
+      if (this.socket.connected && username) {
+        this.socket.emit('user:join', { username });
+      }
+      return;
+    }
 
     this.socket = io(SOCKET_SERVER_URL, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
       timeout: 5000
     });
 
     this.socket.on('connect', () => {
       this.isConnected = true;
-      console.log(`[SocketService] Connected to server at ${SOCKET_SERVER_URL}`);
+      if (this.currentUsername) {
+        this.socket.emit('user:join', { username: this.currentUsername });
+      }
       this._notifyConnectionChange(true);
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', () => {
       this.isConnected = false;
-      console.warn(`[SocketService] Disconnected: ${reason}`);
       this._notifyConnectionChange(false);
     });
 
-    this.socket.on('connect_error', (err) => {
+    this.socket.on('connect_error', () => {
       this.isConnected = false;
-      console.warn(`[SocketService] Connection error:`, err.message);
       this._notifyConnectionChange(false);
     });
+  }
+
+  join(username) {
+    this.currentUsername = username;
+    if (this.socket && this.isConnected) {
+      this.socket.emit('user:join', { username });
+    }
   }
 
   _notifyConnectionChange(status) {
@@ -56,27 +73,18 @@ class SocketService {
 
   // --- Publish operations (Client -> Server) ---
 
-  /**
-   * Publish a new chat message to the server
-   */
   publishMessage(message) {
     if (this.socket && this.isConnected) {
       this.socket.emit('message:send', message);
     }
   }
 
-  /**
-   * Publish a like on a message to the server
-   */
-  publishLike(messageId) {
+  publishLike(messageId, username) {
     if (this.socket && this.isConnected) {
-      this.socket.emit('message:like', { messageId });
+      this.socket.emit('message:like', { messageId, username });
     }
   }
 
-  /**
-   * Publish user typing indicator
-   */
   publishTyping(user, isTyping) {
     if (this.socket && this.isConnected) {
       this.socket.emit('user:typing', { user, isTyping });
@@ -85,45 +93,24 @@ class SocketService {
 
   // --- Subscribe operations (Server -> Client) ---
 
-  /**
-   * Subscribe to new incoming messages broadcast from server
-   */
   subscribeToNewMessages(callback) {
     if (!this.socket) return () => {};
     this.socket.on('message:new', callback);
     return () => this.socket.off('message:new', callback);
   }
 
-  /**
-   * Subscribe to initial message history from server
-   */
-  subscribeToHistory(callback) {
-    if (!this.socket) return () => {};
-    this.socket.on('message:history', callback);
-    return () => this.socket.off('message:history', callback);
-  }
-
-  /**
-   * Subscribe to like updates broadcast from server
-   */
   subscribeToLikes(callback) {
     if (!this.socket) return () => {};
     this.socket.on('message:liked', callback);
     return () => this.socket.off('message:liked', callback);
   }
 
-  /**
-   * Subscribe to user count updates
-   */
-  subscribeToUserCount(callback) {
+  subscribeToOnlineUsers(callback) {
     if (!this.socket) return () => {};
-    this.socket.on('users:count', callback);
-    return () => this.socket.off('users:count', callback);
+    this.socket.on('users:online', callback);
+    return () => this.socket.off('users:online', callback);
   }
 
-  /**
-   * Subscribe to typing indicators
-   */
   subscribeToTyping(callback) {
     if (!this.socket) return () => {};
     this.socket.on('user:typing', callback);

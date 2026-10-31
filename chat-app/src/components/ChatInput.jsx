@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Smile, AtSign, Send } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
 import MentionDropdown from './MentionDropdown';
-import { user_list } from '../constants/users';
 
-export default function ChatInput({ onSendMessage, onTyping }) {
+export default function ChatInput({ onSendMessage, onTyping, activeUsers = [] }) {
   const [text, setText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [mentionState, setMentionState] = useState({
@@ -70,7 +69,7 @@ export default function ChatInput({ onSendMessage, onTyping }) {
   const handleKeyDown = (e) => {
     // If mention dropdown is open
     if (mentionState.isOpen) {
-      const filtered = user_list.filter((u) =>
+      const filtered = activeUsers.filter((u) =>
         u.toLowerCase().startsWith(mentionState.query.toLowerCase())
       );
 
@@ -219,6 +218,7 @@ export default function ChatInput({ onSendMessage, onTyping }) {
       {/* Mention Dropdown Popover */}
       {mentionState.isOpen && (
         <MentionDropdown
+          activeUsers={activeUsers}
           filterText={mentionState.query}
           selectedIndex={mentionState.selectedIndex}
           onSelectUser={selectMentionUser}
@@ -238,7 +238,7 @@ export default function ChatInput({ onSendMessage, onTyping }) {
         <textarea
           ref={textareaRef}
           className="chat-textarea"
-          placeholder="Type Message (type @ to mention a member)..."
+          placeholder="Type Message (type @ to mention active members)..."
           value={text}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -250,7 +250,7 @@ export default function ChatInput({ onSendMessage, onTyping }) {
           <button
             type="button"
             className="chat-action-btn"
-            title="Mention a user (@)"
+            title="Mention an active user (@)"
             aria-label="Mention a user"
             onClick={handleMentionButtonClick}
           >

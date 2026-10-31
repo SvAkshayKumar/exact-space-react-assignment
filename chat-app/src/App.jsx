@@ -3,62 +3,34 @@ import ChatHeader from './components/ChatHeader';
 import ChatMessageList from './components/ChatMessageList';
 import ChatInput from './components/ChatInput';
 import { socketService } from './services/socketService';
-import { getRandomUser, user_list, getUserColor, getInitials } from './constants/users';
-import { Hash, Plus, MessageSquare, Info } from 'lucide-react';
+import { getPersistentUser, user_list } from './constants/users';
 import './App.css';
 
-// Initial fallback messages if socket server isn't running yet
-const DEFAULT_FALLBACK_MESSAGES = [
-  {
-    id: 'msg-seed-1',
-    user: 'PubNub Bot',
-    text: 'Welcome to Team Chat. 👋 Send a message now to start interacting with other users in the app. ⬇️',
-    timestamp: '12:16',
-    likes: 2
-  },
-  {
-    id: 'msg-seed-2',
-    user: 'Gregory Goolsby',
-    text: 'Hey everyone!',
-    timestamp: '17:28',
-    likes: 1
-  },
-  {
-    id: 'msg-seed-3',
-    user: 'Elin Emmanuel',
-    text: 'Oh hi, Gregory! Rolande is around, too...',
-    timestamp: '17:30',
-    likes: 0
-  }
-];
-
 export default function App() {
-  const [messages, setMessages] = useState(DEFAULT_FALLBACK_MESSAGES);
+  // Messages start empty at join instant; refreshes restart from that instant
+  const [messages, setMessages] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [userCount, setUserCount] = useState(3);
+  const [onlineCount, setOnlineCount] = useState(1);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUser, setTypingUser] = useState(null);
-  const [showMembersDrawer, setShowMembersDrawer] = useState(false);
-  const [currentUser] = useState(() => getRandomUser());
 
-  // Establish Socket.IO pub/sub connection on mount
+  // Persistent user name stored in cache (localStorage)
+  const [currentUser, setCurrentUser] = useState(() => getPersistentUser());
+
+  // Connect socket and register persistent user on mount
   useEffect(() => {
-    socketService.connect();
+    socketService.connect(currentUser);
 
     const unsubConnection = socketService.onConnectionChange((connected) => {
       setIsConnected(connected);
-    });
-
-    // Subscribe to history published upon connection
-    const unsubHistory = socketService.subscribeToHistory((history) => {
-      if (Array.isArray(history) && history.length > 0) {
-        setMessages(history);
+      if (connected) {
+        socketService.join(currentUser);
       }
     });
 
-    // Subscribe to new messages published by any client
+    // Subscribe to new incoming messages broadcast from that instant onward
     const unsubNewMsg = socketService.subscribeToNewMessages((newMsg) => {
       setMessages((prev) => {
-        // Prevent duplicate append if message already added
         if (prev.some((m) => m.id === newMsg.id)) {
           return prev;
         }
@@ -66,16 +38,19 @@ export default function App() {
       });
     });
 
-    // Subscribe to like events published across the network
-    const unsubLikes = socketService.subscribeToLikes(({ messageId, likes }) => {
+    // Subscribe to like updates broadcast across clients
+    const unsubLikes = socketService.subscribeToLikes(({ messageId, likes, likedBy }) => {
       setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, likes } : m))
+        prev.map((m) =>
+          m.id === messageId ? { ...m, likes, likedBy: likedBy || [] } : m
+        )
       );
     });
 
-    // Subscribe to active connected user count
-    const unsubUserCount = socketService.subscribeToUserCount((count) => {
-      setUserCount(count);
+    // Subscribe to real-time online users
+    const unsubOnline = socketService.subscribeToOnlineUsers(({ count, users }) => {
+      setOnlineCount(count || 1);
+      setOnlineUsers(users || []);
     });
 
     // Subscribe to typing notifications
@@ -85,57 +60,87 @@ export default function App() {
 
     return () => {
       unsubConnection();
-      unsubHistory();
       unsubNewMsg();
       unsubLikes();
-      unsubUserCount();
+      unsubOnline();
       unsubTyping();
     };
-  }, []);
+  }, [currentUser]);
 
   /**
-   * Handle sending a new message
-   * As required: randomly assign a username from user_list: ["Alan", "Bob", "Carol", "Dean", "Elin"]
+   * Reset user name cache and assign a new constant name
+   */
+  const handleResetUser = () => {
+    localStorage.removeItem('exactspace_chat_username');
+    const remaining = user_list.filter((u) => u !== currentUser);
+    const newUser = remaining[Math.floor(Math.random() * remaining.length)] || user_list[0];
+    localStorage.setItem('exactspace_chat_username', newUser);
+    setCurrentUser(newUser);
+    socketService.join(newUser);
+  };
+
+  /**
+   * Send a chat message as the constant current user
    */
   const handleSendMessage = useCallback((text) => {
-    const assignedUser = getRandomUser();
     const now = new Date();
     const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
     const newMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      user: assignedUser,
+      user: currentUser,
       text,
       timestamp,
-      likes: 0
+      likes: 0,
+      likedBy: []
     };
 
     if (isConnected) {
-      // Publish message to Socket.IO server
       socketService.publishMessage(newMessage);
     } else {
-      // Local fallback mode when server is disconnected
+      // Local fallback mode if server is offline
       setMessages((prev) => [...prev, newMessage]);
     }
-  }, [isConnected]);
+  }, [currentUser, isConnected]);
 
   /**
-   * Handle liking a message
-   * For each message, add a like button which on click should increase the count
+   * Handle liking/unliking a message:
+   * If already liked by current user, clicking again removes the like!
    */
   const handleLikeMessage = useCallback((messageId) => {
     // Optimistic UI update
     setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId ? { ...msg, likes: (msg.likes || 0) + 1 } : msg
-      )
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+
+        const currentLikedBy = Array.isArray(msg.likedBy) ? [...msg.likedBy] : [];
+        const index = currentLikedBy.indexOf(currentUser);
+        let updatedLikedBy;
+        let updatedLikes;
+
+        if (index !== -1) {
+          // Already liked -> remove like
+          updatedLikedBy = currentLikedBy.filter((u) => u !== currentUser);
+          updatedLikes = Math.max(0, (msg.likes || 1) - 1);
+        } else {
+          // Not yet liked -> add like
+          updatedLikedBy = [...currentLikedBy, currentUser];
+          updatedLikes = (msg.likes || 0) + 1;
+        }
+
+        return {
+          ...msg,
+          likes: updatedLikes,
+          likedBy: updatedLikedBy
+        };
+      })
     );
 
-    // Publish like event to server
+    // Publish like toggle event to socket server
     if (isConnected) {
-      socketService.publishLike(messageId);
+      socketService.publishLike(messageId, currentUser);
     }
-  }, [isConnected]);
+  }, [currentUser, isConnected]);
 
   /**
    * Publish typing status
@@ -146,126 +151,33 @@ export default function App() {
     }
   }, [isConnected, currentUser]);
 
+  // Active users available for @mentions (filter to active users online right now)
+  const activeMembersForMention = onlineUsers.length > 0 ? onlineUsers : [currentUser];
+
   return (
     <div className="chat-app-root">
-      {/* Optional sidebar replicating the reference UI in team-chat-intro.gif */}
-      <aside className="chat-sidebar">
-        <div className="sidebar-profile">
-          <div className="sidebar-avatar">
-            RR
-            <span className="online-indicator"></span>
-          </div>
-          <div className="sidebar-user-details">
-            <span className="sidebar-user-name">Rolande Raimondi</span>
-            <span className="sidebar-user-role">Research Nurse</span>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
-          <div className="sidebar-section-header">
-            <span>Conversations</span>
-            <button type="button" className="sidebar-add-btn" title="Add conversation">
-              <Plus size={16} />
-            </button>
-          </div>
-
-          <nav className="sidebar-nav">
-            <button type="button" className="sidebar-channel-item">
-              <Hash size={16} className="channel-hash-icon" />
-              <span>Poland Office</span>
-            </button>
-            <button type="button" className="sidebar-channel-item active">
-              <Hash size={16} className="channel-hash-icon" />
-              <span>Introductions</span>
-            </button>
-            <button type="button" className="sidebar-channel-item">
-              <Hash size={16} className="channel-hash-icon" />
-              <span>India Office</span>
-            </button>
-          </nav>
-        </div>
-
-        <div className="sidebar-members-list">
-          <div className="sidebar-section-header">
-            <span>Team Members</span>
-          </div>
-          <div className="sidebar-users">
-            {user_list.map((user) => (
-              <div key={user} className="sidebar-user-row">
-                <span
-                  className="sidebar-user-dot"
-                  style={{ backgroundColor: getUserColor(user) }}
-                >
-                  {getInitials(user)}
-                </span>
-                <span className="sidebar-user-name-text">@{user}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Chat Pane */}
       <main className="chat-main-pane">
         <ChatHeader
-          isConnected={isConnected}
-          userCount={userCount}
-          onToggleMembers={() => setShowMembersDrawer(!showMembersDrawer)}
+          onlineCount={onlineCount}
+          currentUser={currentUser}
+          onResetUser={handleResetUser}
         />
 
-        {/* Real-time sync notification bar */}
-        <div className="chat-banner">
-          <Info size={14} />
-          <span>
-            {isConnected
-              ? '⚡ Real-time Socket.io active: messages & likes sync across all open tabs/clients!'
-              : '⚡ Running in local mode. Start the Express server with npm run server for live Socket.io sync.'}
-          </span>
-        </div>
-
-        {/* Chat message thread */}
+        {/* Chat message thread starting from user's join instant */}
         <ChatMessageList
           messages={messages}
           onLike={handleLikeMessage}
           typingUser={typingUser}
+          currentUser={currentUser}
         />
 
         {/* Chat input box at bottom */}
         <ChatInput
           onSendMessage={handleSendMessage}
           onTyping={handleTyping}
+          activeUsers={activeMembersForMention}
         />
       </main>
-
-      {/* Slide-out members drawer */}
-      {showMembersDrawer && (
-        <aside className="chat-members-drawer">
-          <div className="drawer-header">
-            <h3>Channel Members</h3>
-            <button
-              type="button"
-              className="drawer-close"
-              onClick={() => setShowMembersDrawer(false)}
-            >
-              ×
-            </button>
-          </div>
-          <p className="drawer-subtitle">Users randomly assigned to chat messages:</p>
-          <ul className="drawer-user-list">
-            {user_list.map((u) => (
-              <li key={u} className="drawer-user-item">
-                <span
-                  className="drawer-avatar"
-                  style={{ backgroundColor: getUserColor(u) }}
-                >
-                  {getInitials(u)}
-                </span>
-                <span className="drawer-username">@{u}</span>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
     </div>
   );
 }

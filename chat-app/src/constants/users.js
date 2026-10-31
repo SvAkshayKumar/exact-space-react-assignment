@@ -1,20 +1,19 @@
 // Exact user list specified in the assignment
 export const user_list = ["Alan", "Bob", "Carol", "Dean", "Elin"];
 
-// Distinct vibrant colors for user avatars (matching UI in reference)
+// Distinct vibrant colors for user avatars
 export const USER_COLORS = {
   "Alan": "#4A90E2",         // Blue
   "Bob": "#50B83C",          // Green
   "Carol": "#F5A623",        // Orange
   "Dean": "#9013FE",         // Purple
-  "Elin": "#E94E77",         // Coral / Rose
-  "PubNub Bot": "#E55353",   // Red
-  "Gregory Goolsby": "#A2BD30", // Lime / Olive
-  "Elin Emmanuel": "#E94E77" // Coral
+  "Elin": "#E94E77"          // Coral / Rose
 };
 
+const USER_CACHE_KEY = 'exactspace_chat_username';
+
 /**
- * Returns initials from a username (e.g. "Alan" -> "A", "PubNub Bot" -> "PN")
+ * Returns initials from a username (e.g. "Alan" -> "A")
  */
 export function getInitials(name = '') {
   if (!name) return '?';
@@ -32,7 +31,6 @@ export function getUserColor(name = '') {
   if (USER_COLORS[name]) {
     return USER_COLORS[name];
   }
-  // Generate deterministic pleasant color if name not in preset
   const colors = [
     '#4A90E2', '#50B83C', '#F5A623', '#9013FE',
     '#E94E77', '#00A896', '#7209B7', '#F72585'
@@ -45,9 +43,19 @@ export function getUserColor(name = '') {
 }
 
 /**
- * Helper to pick a random username from user_list as required
+ * Get or assign a constant user name for the client.
+ * The name stays constant across refreshes and sessions until the cache is cleared.
  */
-export function getRandomUser() {
-  const randomIndex = Math.floor(Math.random() * user_list.length);
-  return user_list[randomIndex];
+export function getPersistentUser() {
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY);
+    if (cached && user_list.includes(cached)) {
+      return cached;
+    }
+    const chosen = user_list[Math.floor(Math.random() * user_list.length)];
+    localStorage.setItem(USER_CACHE_KEY, chosen);
+    return chosen;
+  } catch {
+    return user_list[0];
+  }
 }

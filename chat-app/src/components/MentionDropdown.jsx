@@ -1,11 +1,17 @@
 import React, { useEffect, useRef } from 'react';
-import { user_list, getInitials, getUserColor } from '../constants/users';
+import { getInitials, getUserColor } from '../constants/users';
 
-export default function MentionDropdown({ filterText = '', onSelectUser, onClose, selectedIndex = 0 }) {
+export default function MentionDropdown({
+  activeUsers = [],
+  filterText = '',
+  onSelectUser,
+  onClose,
+  selectedIndex = 0
+}) {
   const dropdownRef = useRef(null);
 
-  // Filter users based on whatever was typed after '@'
-  const filteredUsers = user_list.filter((u) =>
+  // Only currently active/online users are available for mentions
+  const filteredUsers = activeUsers.filter((u) =>
     u.toLowerCase().startsWith(filterText.toLowerCase())
   );
 
@@ -19,17 +25,29 @@ export default function MentionDropdown({ filterText = '', onSelectUser, onClose
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  if (activeUsers.length === 0) {
+    return (
+      <div className="mention-dropdown-menu" ref={dropdownRef}>
+        <div className="mention-header">Active Members</div>
+        <div className="mention-empty">No other active users online</div>
+      </div>
+    );
+  }
+
   if (filteredUsers.length === 0) {
     return (
       <div className="mention-dropdown-menu" ref={dropdownRef}>
-        <div className="mention-empty">No matching users</div>
+        <div className="mention-header">Active Members</div>
+        <div className="mention-empty">No matching active users online</div>
       </div>
     );
   }
 
   return (
     <div className="mention-dropdown-menu" ref={dropdownRef} role="listbox">
-      <div className="mention-header">Mention Member</div>
+      <div className="mention-header">
+        <span>Active Members ({filteredUsers.length})</span>
+      </div>
       {filteredUsers.map((user, idx) => {
         const isSelected = idx === selectedIndex;
         return (
@@ -48,6 +66,7 @@ export default function MentionDropdown({ filterText = '', onSelectUser, onClose
               {getInitials(user)}
             </div>
             <span className="mention-username">@{user}</span>
+            <span className="mention-online-indicator" title="Active now">●</span>
           </button>
         );
       })}
