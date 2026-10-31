@@ -6,8 +6,8 @@ export default function PhotoItem({ photo, onLike }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // Use download_url as required by assignment; provide a fallback if needed
   const imageUrl = photo.download_url;
+  const isLiked = photo.liked === true;
 
   return (
     <article className="photo-card">
@@ -38,13 +38,13 @@ export default function PhotoItem({ photo, onLike }) {
           Author: <strong className="photo-author-name">{photo.author}</strong>
         </span>
 
-        {/* FontAwesome thumbs up icon and click counter as specified */}
+        {/* Like toggle button — click to like, click again to unlike */}
         <button
           type="button"
-          className="photo-like-btn"
+          className={`photo-like-btn ${isLiked ? 'liked-active' : ''}`}
           onClick={() => onLike(photo.id)}
-          aria-label={`Like photo by ${photo.author}, currently ${photo.likes || 0} likes`}
-          title="Like this photo"
+          aria-label={`${isLiked ? 'Remove like from' : 'Like'} photo by ${photo.author}, ${photo.likes || 0} likes`}
+          title={isLiked ? 'Remove like' : 'Like this photo'}
         >
           <FontAwesomeIcon icon={faThumbsUp} className="photo-like-icon" />
           <span className="photo-like-count">{photo.likes || 0}</span>
@@ -53,4 +53,3 @@ export default function PhotoItem({ photo, onLike }) {
     </article>
   );
 }
-

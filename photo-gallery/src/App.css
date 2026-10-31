@@ -162,6 +162,16 @@
   transform: scale(0.92);
 }
 
+/* Active/liked state — highlighted background */
+.photo-like-btn.liked-active {
+  background-color: #e8f0fe;
+}
+
+.photo-like-btn.liked-active .photo-like-icon {
+  color: #1877f2;
+  transform: scale(1.12);
+}
+
 .photo-like-icon {
   color: #1877f2; /* Exact bright blue thumbs-up icon from photo-gallery.jpg */
   font-size: 19px;

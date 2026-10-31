@@ -44,10 +44,11 @@ export default function App() {
       if (!Array.isArray(data) || data.length === 0) {
         setHasMore(false);
       } else {
-        // Initialize likes to 0 as required
+        // Initialize likes and liked flag (false = not yet liked)
         const formatted = data.map((item) => ({
           ...item,
-          likes: 0
+          likes: 0,
+          liked: false
         }));
 
         setPhotos((prev) => {
@@ -106,15 +107,18 @@ export default function App() {
     };
   }, [fetchPhotos, loading, hasMore]);
 
-  // Handle like button click
-  // "On clicking this icon, increase the count. The count should be increase as many clicks performed."
+  // Toggle like on a photo — first click likes (+1), second click unlikes (-1)
   const handleLike = useCallback((photoId) => {
     setPhotos((prevPhotos) =>
-      prevPhotos.map((photo) =>
-        photo.id === photoId
-          ? { ...photo, likes: (photo.likes || 0) + 1 }
-          : photo
-      )
+      prevPhotos.map((photo) => {
+        if (photo.id !== photoId) return photo;
+        const wasLiked = photo.liked;
+        return {
+          ...photo,
+          liked: !wasLiked,
+          likes: wasLiked ? Math.max(0, photo.likes - 1) : photo.likes + 1
+        };
+      })
     );
   }, []);
 
@@ -173,4 +177,3 @@ export default function App() {
     </div>
   );
 }
-
