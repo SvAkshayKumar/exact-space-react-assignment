@@ -35,6 +35,9 @@ function broadcastOnlineUsers() {
     users // Array of { userId, username }
   });
 }
+app.get("/", (req, res) => {
+  res.send("Chat backend is running!");
+});
 
 // REST health endpoint
 app.get('/api/health', (req, res) => {
