@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+const SOCKET_SERVER_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (import.meta.env.DEV ? 'http://localhost:5001' : 'https://exact-space-chat-application.onrender.com');
 
 class SocketService {
   constructor() {
